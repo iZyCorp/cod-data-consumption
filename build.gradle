@@ -1,0 +1,51 @@
+plugins {
+    id 'java'
+    id "com.github.johnrengelman.shadow" version "7.1.0"
+}
+
+group 'fr.izy'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.0'
+
+    implementation('io.github.izycorp:moonapi:1.0.1')
+    //implementation 'redis.clients:jedis:3.7.0'
+    implementation('com.google.code.gson:gson:2.10')
+    implementation('org.json:json:20220924')
+    implementation('com.squareup.okhttp3:okhttp:4.10.0')
+    implementation('org.postgresql:postgresql:42.5.1')
+}
+
+shadowJar {
+    manifest {
+        attributes 'Main-Class': 'fr.izy.Main'
+    }
+}
+
+jar {
+    manifest {
+        attributes(
+                'Class-Path': configurations.runtimeClasspath.files.collect { it.getName() }.join(' '),
+                'Main-Class': 'fr.izy.Main'
+        )
+    }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
+
+compileJava.options.encoding = 'UTF-8'
+compileJava.options.fork = true
+
+test {
+    useJUnitPlatform()
+}
