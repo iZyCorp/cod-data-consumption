@@ -13,6 +13,7 @@ import org.json.JSONObject;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.Arrays;
+
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -34,6 +35,9 @@ public class Main {
      * This value define from which page we start fetching data.
      */
     private int fetchedPagesAmount;
+
+    private int nbPageToFetch = 5000000;
+
     /**
      * This value define how many thread are used by the program to send requests to distant server.
      */
@@ -123,6 +127,10 @@ public class Main {
 
             System.out.println("[?] What are max thread amount (default 2000)");
             maxThreadAtRuntime = scanner.nextInt();
+
+            System.out.println("[?] How many pages do you want to fetch (default 5000000)");
+            nbPageToFetch = scanner.nextInt();
+
         } catch (Exception e) {
             System.out.println("[!] Error - While reading...");
             System.exit(1);
@@ -143,7 +151,7 @@ public class Main {
     private void initializeDatabase() {
         try {
             // We init our database connection
-            Database database = new Database("localhost", 5432, "moon", "user", "password");
+            Database database = new Database("localhost", 5432, "moon", "pi", "pi");
             System.out.println("[DATABASE] Successfully connected to database.");
 
             // Table: Opus
@@ -178,7 +186,6 @@ public class Main {
         ModernWarfare mw = new ModernWarfare(requestManager, targetedOpus);
 
         // For loop to get our 50 000 000 accounts KDA 2500000 - 5000000 for 1 000 000 accounts
-        final int nbPageToFetch = 5000000;
         System.out.println("[!] Starting from page " + fetchedPagesAmount + " for " + targetPlatform.name() + " on " + nbPageToFetch + " pages | with " + maxThreadAtRuntime + " threads at runtime.");
         System.out.println("_____________________________________________________________");
         AtomicReference<Double> percentage = new AtomicReference<>((double) 0);
@@ -200,7 +207,6 @@ public class Main {
             }
 
             // create a thread
-            // TODO: Dégager cette merde et mettre des futures
             Thread currentThread = new Thread(() -> {
                 JSONObject leaderboard = null;
 
@@ -216,10 +222,14 @@ public class Main {
 
                 // Looping through the leaderboard and our 20 players
                 for (int userIndex = 0; userIndex < 19; userIndex++) {
-                    // retrieving the users kda
+
+                    // Creating our variables
                     BigDecimal kda;
                     //String username;
+
+                    // retrieving the needed data
                     try {
+                        assert leaderboard != null;
                         kda = BigDecimal.valueOf(leaderboard.getJSONObject("data").getJSONArray("entries").getJSONObject(userIndex).getJSONObject("values").getDouble("kdRatio"));
                         //username = leaderboard.getJSONObject("data").getJSONArray("entries").getJSONObject(userIndex).getString("username");
                     } catch (Exception e) {
@@ -238,14 +248,17 @@ public class Main {
                     }
                 }
 
+                // Redefining the percentage
                 percentage.set(Math.round(((double) finalPageIndex / (double) nbPageToFetch) * 10000.0) / 100.0);
 
                 try {
+                    // Sending the percentage to the console
                     System.out.println("Progress: " + finalPageIndex + "/" + nbPageToFetch + " (" + percentage + "%)| " + statsDAO.countNumberOfStats() + " different KDA");
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
                 }
 
+                // Interrupting the thread
                 Thread.currentThread().interrupt();
             });
 
