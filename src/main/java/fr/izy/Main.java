@@ -11,6 +11,7 @@ import io.github.izycorp.moonapi.query.RequestManager;
 import org.json.JSONObject;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.SQLException;
 import java.util.Arrays;
 
@@ -237,8 +238,8 @@ public class Main {
                         break;
                     }
 
-                    // Make it 2 decimals
-                    kda = BigDecimal.valueOf(Math.round(kda.doubleValue() * 100.0) / 100.0);
+                    // Make it 2 decimals only
+                    kda = kda.setScale(2, RoundingMode.HALF_UP);
 
                     try {
                         //dataDAO.insertData(new Data(kda, username, targetPlatform));
