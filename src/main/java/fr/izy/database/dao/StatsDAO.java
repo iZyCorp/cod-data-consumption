@@ -51,10 +51,10 @@ public class StatsDAO {
         preparedStatement.execute();
     }
 
-    public void insertStats(BigDecimal kda, Platform platform) throws SQLException {
+    public void insertStats(double kda, Platform platform) throws SQLException {
         int idPlatform = platform == Platform.PLAYSTATION ? 1 : platform == Platform.XBOX ? 2 : platform == Platform.BATTLE_NET ? 3 : 4;
         PreparedStatement preparedStatement = dataSourceConnection.prepareStatement("SELECT insert_checker(?::numeric, ?::integer)");
-        preparedStatement.setDouble(1, kda.doubleValue());
+        preparedStatement.setDouble(1, kda);
         preparedStatement.setInt(2, idPlatform);
         preparedStatement.execute();
     }

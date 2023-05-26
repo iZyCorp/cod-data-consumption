@@ -1,6 +1,5 @@
 package fr.izy;
 
-import fr.izy.database.dao.DataDAO;
 import fr.izy.database.Database;
 import fr.izy.database.dao.OpusDAO;
 import fr.izy.database.dao.PlatformDAO;
@@ -11,17 +10,16 @@ import io.github.izycorp.moonapi.query.RequestManager;
 import org.json.JSONObject;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.sql.SQLException;
 import java.util.Arrays;
 
 import java.util.Scanner;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Main {
 
     // Database properties
-    private DataDAO dataDAO;
     private StatsDAO statsDAO;
 
     // MoonAPI properties
@@ -36,6 +34,8 @@ public class Main {
      * This value define from which page we start fetching data.
      */
     private int fetchedPagesAmount;
+
+    private Semaphore threadSemaphore;
 
     private int nbPageToFetch = 5000000;
 
@@ -60,7 +60,7 @@ public class Main {
         try {
             Scanner scanner = new Scanner(System.in);
             System.out.println("[?] Enter :\n| '1' = BO3 \n| '2' = INFINITE_WARFARE \n| '3' = WWII \n| '4' = 'BO4' \n| '5' = 'MW2019' \n| '6' = ColdWar \n| '7' = Vanguard \n| '8' = MW2");
-            while(!isOkay) {
+            while (!isOkay) {
                 int opus = scanner.nextInt();
                 switch (opus) {
                     case 1:
@@ -120,20 +120,22 @@ public class Main {
                         System.out.println("[!] Invalid platform for this opus, please enter a valid one.");
                         break;
                 }
-                if(Arrays.asList(targetedOpus.getCompatiblePlatforms()).contains(targetedPlatform)) {
-                    fetchedPagesAmount = dataDAO.getLatestPage(input) == 0 ? 1 : dataDAO.getLatestPage(input);
+                if (Arrays.asList(targetedOpus.getCompatiblePlatforms()).contains(targetedPlatform)) {
+                    //fetchedPagesAmount = dataDAO.getLatestPage(input) == 0 ? 1 : dataDAO.getLatestPage(input);
                     isOkay = true;
                 } else System.out.println("[!] Invalid platform for this opus, please enter a valid one.");
             }
 
             System.out.println("[?] What are max thread amount (default 2000)");
             maxThreadAtRuntime = scanner.nextInt();
+            threadSemaphore = new Semaphore(maxThreadAtRuntime);
 
             System.out.println("[?] How many pages do you want to fetch (default 5000000)");
             nbPageToFetch = scanner.nextInt();
 
         } catch (Exception e) {
             System.out.println("[!] Error - While reading...");
+            System.out.println(e.getMessage());
             System.exit(1);
         }
 
@@ -141,7 +143,7 @@ public class Main {
         Scanner scanner = new Scanner(System.in);
 
         int input = scanner.nextInt();
-        if(input <= 0) fetchedPagesAmount = 1;
+        if (input <= 0) fetchedPagesAmount = 1;
         else fetchedPagesAmount = input;
 
         System.out.println("[!] Loading " + targetedPlatform.name() + " data...");
@@ -152,7 +154,7 @@ public class Main {
     private void initializeDatabase() {
         try {
             // We init our database connection
-            Database database = new Database("localhost", 5432, "moon", "pi", "pi");
+            Database database = new Database("localhost", 5432, "moonu", "postgres", "postgres");
             System.out.println("[DATABASE] Successfully connected to database.");
 
             // Table: Opus
@@ -166,9 +168,9 @@ public class Main {
             System.out.println("[DATABASE] Successfully created table Platform.");
 
             // Table: Data
-            dataDAO = new DataDAO(database.getConnection());
+            /*dataDAO = new DataDAO(database.getConnection());
             dataDAO.createTableData();
-            System.out.println("[DATABASE] Successfully created table Data.");
+            System.out.println("[DATABASE] Successfully created table Data.");*/
 
             // Table: Stats
             statsDAO = new StatsDAO(database.getConnection());
@@ -194,18 +196,11 @@ public class Main {
         // For loop to get our 50 000 000 accounts KDA 2500000 - 5000000 for 1 000 000 accounts
         for (int pageIndex = fetchedPagesAmount; pageIndex < nbPageToFetch; pageIndex++) {
 
+            // We acquire a semaphore to avoid spamming the api
+            threadSemaphore.acquire();
+
             // Passing a variable to a thread
             int finalPageIndex = pageIndex;
-
-            // while the number of threads is superior to 100, the thread will wait before creating a new one
-            while (Thread.activeCount() >= maxThreadAtRuntime) {
-                Thread.sleep(1);
-            }
-
-            // If the number of threads is inferior to 100 we sleep the thread for 1ms to avoid spamming the api
-            if (Thread.activeCount() < maxThreadAtRuntime) {
-                Thread.sleep(1);
-            }
 
             // create a thread
             Thread currentThread = new Thread(() -> {
@@ -213,7 +208,7 @@ public class Main {
 
                 try {
                     leaderboard = mw.getLeaderboards(targetPlatform, TimeFrame.ALLTIME, Gamemode.CAREER, GameType.CORE, finalPageIndex);
-                    if(leaderboard == null) {
+                    if (leaderboard == null) {
                         System.out.println("[!] Error while fetching " + finalPageIndex + ".. retrying");
                         //Thread.sleep(1000);
                     }
@@ -226,7 +221,6 @@ public class Main {
 
                     // Creating our variables
                     BigDecimal kda;
-                    //String username;
 
                     // retrieving the needed data
                     try {
@@ -238,12 +232,13 @@ public class Main {
                         break;
                     }
 
-                    // Make it 2 decimals only
-                    kda = kda.setScale(2, RoundingMode.HALF_UP);
+                    // Make it 2 decimals only and when there is only 0 behind, leave a 0
+                    double kd = kda.doubleValue();
+                    kd = Math.round(kd * 100.0) / 100.0;
 
                     try {
                         //dataDAO.insertData(new Data(kda, username, targetPlatform));
-                        statsDAO.insertStats(kda, targetPlatform);
+                        statsDAO.insertStats(kd, targetPlatform);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
@@ -260,12 +255,12 @@ public class Main {
                 }
 
                 // Interrupting the thread
-                Thread.currentThread().interrupt();
+                threadSemaphore.release();
             });
 
             currentThread.start();
 
-            if(percentage.get() == 100.0) {
+            if (percentage.get() == 100.0) {
                 System.out.println("Finished " + targetPlatform.name());
                 System.out.println("_____________________________________________________________");
             }
