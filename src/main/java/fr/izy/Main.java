@@ -9,8 +9,10 @@ import io.github.izycorp.moonapi.components.*;
 import io.github.izycorp.moonapi.query.RequestManager;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 
 import java.util.Scanner;
@@ -43,6 +45,8 @@ public class Main {
      * This value define how many thread are used by the program to send requests to distant server.
      */
     private int maxThreadAtRuntime = 2000;
+
+    private static final DecimalFormat dFormat = new DecimalFormat("0.00");
 
     public static void main(String[] args) throws Exception {
         new Main();
@@ -154,29 +158,17 @@ public class Main {
     private void initializeDatabase() {
         try {
             // We init our database connection
-            Database database = new Database("localhost", 5432, "moonu", "postgres", "postgres");
+            Database database = new Database("localhost", 5432, "moon", "postgres", "postgres");
             System.out.println("[DATABASE] Successfully connected to database.");
 
-            // Table: Opus
-            OpusDAO opusDAO = new OpusDAO(database.getConnection());
-            opusDAO.createTableOpus();
-            System.out.println("[DATABASE] Successfully created table Opus.");
+            System.out.println("[DATABASE] Executing SQL files...");
+            File[] files = database.fetchSQLFiles();
+            for (File file : files) {
+                System.out.println("[DATABASE] Executing " + file.getName() + "...");
+                database.executeSQLFile(file);
+            }
 
-            // Table: Platform
-            PlatformDAO platformDAO = new PlatformDAO(database.getConnection());
-            platformDAO.createTablePlatform();
-            System.out.println("[DATABASE] Successfully created table Platform.");
-
-            // Table: Data
-            /*dataDAO = new DataDAO(database.getConnection());
-            dataDAO.createTableData();
-            System.out.println("[DATABASE] Successfully created table Data.");*/
-
-            // Table: Stats
             statsDAO = new StatsDAO(database.getConnection());
-            statsDAO.createTableStats();
-            statsDAO.insertProcedureChecker();
-            System.out.println("[DATABASE] Successfully created table Stats.");
 
         } catch (Exception e) {
             System.out.println("[DATABASE] Error while creating tables... skipping (warn)");
@@ -233,12 +225,11 @@ public class Main {
                     }
 
                     // Make it 2 decimals only and when there is only 0 behind, leave a 0
-                    double kd = kda.doubleValue();
-                    kd = Math.round(kd * 100.0) / 100.0;
+                    double kd = Double.parseDouble(dFormat.format(kda.doubleValue()).replace(",", "."));
+                    //kd = Math.round(kd * 100.0) / 100.0;
 
                     try {
-                        //dataDAO.insertData(new Data(kda, username, targetPlatform));
-                        statsDAO.insertStats(kd, targetPlatform);
+                        statsDAO.insertStats(kd, targetPlatform, targetedOpus);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
