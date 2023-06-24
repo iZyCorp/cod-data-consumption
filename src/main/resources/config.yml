@@ -1,0 +1,6 @@
+# Database
+database: "moon"
+host: "localhost"
+port: "5432" #5432 for PostgreSQL, 3306 for MySQL
+user: "pi"
+password: "pi"

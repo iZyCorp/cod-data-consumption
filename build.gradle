@@ -16,6 +16,7 @@ dependencies {
 
     implementation('io.github.izycorp:moonapi:1.0.1')
 
+    implementation('org.yaml:snakeyaml:2.0')
     implementation('com.google.code.gson:gson:2.10')
     implementation('org.json:json:20220924')
     implementation('com.squareup.okhttp3:okhttp:4.10.0')
