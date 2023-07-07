@@ -1,9 +1,8 @@
 package fr.izy.database.dao;
 
-import io.github.izycorp.moonapi.components.Opus;
-import io.github.izycorp.moonapi.components.Platform;
+import io.github.izycorp.codapi.components.Opus;
+import io.github.izycorp.codapi.components.Platform;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;

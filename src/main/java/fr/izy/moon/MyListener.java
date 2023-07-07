@@ -1,11 +1,11 @@
 package fr.izy.moon;
 
-import io.github.izycorp.moonapi.events.EventHandler;
-import io.github.izycorp.moonapi.events.Listener;
-import io.github.izycorp.moonapi.events.ListenerPriority;
-import io.github.izycorp.moonapi.events.components.ErrorInRequestEvent;
-import io.github.izycorp.moonapi.events.components.PostRequestEvent;
-import io.github.izycorp.moonapi.events.components.PreRequestEvent;
+
+import io.github.izycorp.codapi.events.EventHandler;
+import io.github.izycorp.codapi.events.Listener;
+import io.github.izycorp.codapi.events.ListenerPriority;
+import io.github.izycorp.codapi.events.components.ErrorInRequestEvent;
+import io.github.izycorp.codapi.events.components.PreRequestEvent;
 
 public class MyListener extends Listener {
 
