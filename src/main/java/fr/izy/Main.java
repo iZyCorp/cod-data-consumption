@@ -2,10 +2,10 @@ package fr.izy;
 
 import fr.izy.database.Database;
 import fr.izy.database.dao.StatsDAO;
-import fr.izy.moon.ModernWarfare;
-import fr.izy.moon.MyListener;
-import io.github.izycorp.moonapi.components.*;
-import io.github.izycorp.moonapi.query.RequestManager;
+import io.github.izycorp.codapi.abstraction.Page;
+import io.github.izycorp.codapi.components.*;
+import io.github.izycorp.codapi.query.RequestManager;
+import io.github.izycorp.codapi.title.ModernWarfare2019;
 import org.json.JSONObject;
 import org.yaml.snakeyaml.Yaml;
 
@@ -15,9 +15,9 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.sql.SQLException;
 import java.text.DecimalFormat;
-import java.util.Arrays;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Scanner;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
@@ -64,7 +64,7 @@ public class Main {
         try {
             configFile = new File("config.yml");
             if(!configFile.exists()) {
-                File ressourceFile = new File(getClass().getClassLoader().getResource("config.yml").toURI());
+                File ressourceFile = new File(Objects.requireNonNull(getClass().getClassLoader().getResource("config.yml")).toURI());
                 Files.copy(ressourceFile.toPath(), configFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 System.out.println("[!] Config file was not found, creating a new one...");
                 System.out.println("[!] Please edit the config file and restart the program.");
@@ -141,7 +141,6 @@ public class Main {
             isOkay = false;
 
             System.out.println("[?] Enter :\n| '1' = XBOX \n| '2' = PSN \n| '3' = BATTLE_NET \n| '4' = STEAM");
-            System.out.println("/!\\ WARNING Compatible platforms with" + targetedOpus.name() + " : " + Arrays.toString(targetedOpus.getCompatiblePlatforms()));
             while (!isOkay) {
                 int input = scanner.nextInt();
                 switch (input) {
@@ -161,7 +160,7 @@ public class Main {
                         System.out.println("[!] Invalid platform for this opus, please enter a valid one.");
                         break;
                 }
-                if (Arrays.asList(targetedOpus.getCompatiblePlatforms()).contains(targetedPlatform)) {
+                if (isPlatformCompatible(targetedOpus)) {
                     fetchedPagesAmount = statsDAO.getNumberOfFetchedPage(targetedOpus, targetedPlatform);
                     isOkay = true;
                 } else System.out.println("[!] Invalid platform for this opus, please enter a valid one.");
@@ -220,7 +219,7 @@ public class Main {
 
     public void otherGun(Platform targetPlatform) throws InterruptedException {
         // Creating Mw object
-        ModernWarfare mw = new ModernWarfare(requestManager, targetedOpus);
+        ModernWarfare2019 mw = new ModernWarfare2019(requestManager);
 
         // For loop to get our 50 000 000 accounts KDA 2500000 - 5000000 for 1 000 000 accounts
         System.out.println("[!] Starting from page " + fetchedPagesAmount + " for " + targetPlatform.name() + " on " + nbPageToFetch + " pages | with " + maxThreadAtRuntime + " threads at runtime.");
@@ -238,17 +237,16 @@ public class Main {
 
             // create a thread
             Thread currentThread = new Thread(() -> {
-                JSONObject leaderboard = null;
+                Page page = null;
 
                 try {
-                    leaderboard = mw.getLeaderboards(targetPlatform, TimeFrame.ALLTIME, Gamemode.CAREER, GameType.CORE, finalPageIndex);
-                    if (leaderboard == null) {
-                        System.out.println("[!] Error while fetching " + finalPageIndex + ".. retrying");
-                        //Thread.sleep(1000);
-                    }
+                    page = mw.getLeaderboard(targetPlatform, TimeFrame.ALLTIME, Gamemode.CAREER, GameType.CORE, finalPageIndex);
                 } catch (Exception e) {
                     System.out.println("[!] Error while getting leaderboard (page " + finalPageIndex + ") retrying...");
                 }
+
+                assert page != null;
+                JSONObject leaderboard = page.getData();
 
                 // Looping through the leaderboard and our 20 players
                 for (int userIndex = 0; userIndex < 19; userIndex++) {
@@ -258,8 +256,7 @@ public class Main {
 
                     // retrieving the needed data
                     try {
-                        assert leaderboard != null;
-                        kda = BigDecimal.valueOf(leaderboard.getJSONObject("data").getJSONArray("entries").getJSONObject(userIndex).getJSONObject("values").getDouble("kdRatio"));
+                        kda = BigDecimal.valueOf(leaderboard.getJSONArray("entries").getJSONObject(userIndex).getJSONObject("values").getDouble("kdRatio"));
                         //username = leaderboard.getJSONObject("data").getJSONArray("entries").getJSONObject(userIndex).getString("username");
                     } catch (Exception e) {
                         System.out.println("[!] Error while getting kda for user " + userIndex + " on page " + finalPageIndex + " maybe the end?");
@@ -308,6 +305,32 @@ public class Main {
             });
 
             currentThread.start();
+        }
+    }
+
+    private boolean isPlatformCompatible(Opus opus) {
+        switch (opus) {
+            case MW2019:
+            case MW2:
+            case COLD_WAR:
+            case VANGUARD:
+                return (targetedPlatform == Platform.BATTLE_NET ||
+                        targetedPlatform == Platform.PLAYSTATION ||
+                        targetedPlatform == Platform.XBOX ||
+                        targetedPlatform == Platform.STEAM);
+            case BO4:
+                return (targetedPlatform == Platform.BATTLE_NET ||
+                        targetedPlatform == Platform.PLAYSTATION ||
+                        targetedPlatform == Platform.XBOX);
+            case WWII:
+            case INFINITE_WARFARE:
+            case BO3:
+                return (targetedPlatform == Platform.PLAYSTATION ||
+                        targetedPlatform == Platform.XBOX ||
+                        targetedPlatform == Platform.STEAM);
+            default:
+                return false;
+
         }
     }
 }
