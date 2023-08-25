@@ -2,10 +2,10 @@ package fr.izy;
 
 import fr.izy.database.Database;
 import fr.izy.database.dao.StatsDAO;
+import fr.izy.utils.TitleAdapter;
 import io.github.izycorp.codapi.abstraction.Page;
 import io.github.izycorp.codapi.components.*;
 import io.github.izycorp.codapi.query.RequestManager;
-import io.github.izycorp.codapi.title.ModernWarfare2019;
 import org.json.JSONObject;
 import org.yaml.snakeyaml.Yaml;
 
@@ -38,7 +38,7 @@ public class Main {
 
     // Other properties
     /**
-     * This value define from which page we start fetching data.
+     * This value defines from which page we start fetching data.
      */
     private int fetchedPagesAmount;
 
@@ -47,7 +47,7 @@ public class Main {
     private int nbPageToFetch = 5000000;
 
     /**
-     * This value define how many thread are used by the program to send requests to distant server.
+     * This value defines how many threads are used by the program to send requests to a distant server.
      */
     private int maxThreadAtRuntime = 2000;
 
@@ -219,14 +219,14 @@ public class Main {
 
     public void otherGun(Platform targetPlatform) throws InterruptedException {
         // Creating Mw object
-        ModernWarfare2019 mw = new ModernWarfare2019(requestManager);
+        final TitleAdapter title = new TitleAdapter(targetedOpus, requestManager);
 
-        // For loop to get our 50 000 000 accounts KDA 2500000 - 5000000 for 1 000 000 accounts
+        // For loop to get our 50 000 000 accounts KDA 2500000-5000000 for 1 000 000 accounts
         System.out.println("[!] Starting from page " + fetchedPagesAmount + " for " + targetPlatform.name() + " on " + nbPageToFetch + " pages | with " + maxThreadAtRuntime + " threads at runtime.");
         System.out.println("_____________________________________________________________");
         AtomicReference<Double> percentage = new AtomicReference<>((double) 0);
 
-        // For loop to get our 50 000 000 accounts KDA 2500000 - 5000000 for 1 000 000 accounts
+        // For loop to get our 50 000 000 accounts KDA 2500000-5000000 for 1 000 000 accounts
         for (int pageIndex = fetchedPagesAmount; pageIndex < nbPageToFetch + 1; pageIndex++) {
 
             // We acquire a semaphore to avoid spamming the api
@@ -240,7 +240,7 @@ public class Main {
                 Page page = null;
 
                 try {
-                    page = mw.getLeaderboard(targetPlatform, TimeFrame.ALLTIME, Gamemode.CAREER, GameType.CORE, finalPageIndex);
+                    page = title.getLeaderboard(targetPlatform, TimeFrame.ALLTIME, Gamemode.CAREER, GameType.CORE, finalPageIndex);
                 } catch (Exception e) {
                     System.out.println("[!] Error while getting leaderboard (page " + finalPageIndex + ") retrying...");
                 }
